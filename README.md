@@ -9,3 +9,6 @@ poprawki istniejących błędów
 dodanie statystyk i wykresów z możliwością filtrowania poza obecnym już pivotem
 przypisanie konkretnych kategorii do typów transakcji, tak aby tylko właściwe były możlowe do wyboru podczas dodawania produktów
 automatyczne (inteligentne) proponowanie kategorii i uzupełnianie innych pól w oparciu o wartości domyślne w przypdaku produktów, których nie ma na liście 
+automatyczne pobieranie i uzupełnianie informacji na temat stanu konta 
+  zabezpieczenie informacji bankowych 
+przeniesienie projektu do odrębnej aplikacji desktop/mobile 
