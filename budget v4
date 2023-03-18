@@ -1,0 +1,152 @@
+const ss = SpreadsheetApp.getActiveSpreadsheet();
+const transactionSheet = ss.getSheetByName("Transactions");
+const historySheet = ss.getSheetByName("History");
+const kategorieSheet = ss.getSheetByName("Kategorie");
+const helperSheet = ss.getSheetByName("Helper formulas");
+const potSheet = ss.getSheetByName("P.O.T");
+
+let transactionSheet_lr = transactionSheet.getLastRow();
+const kategorieSheet_lr = kategorieSheet.getLastRow();
+const historySheet_lr = getLastRowSpecial(historySheet,"C:C")
+
+const kategorieSheet_lc = kategorieSheet.getLastColumn();
+
+const timeStamp = new Date();
+
+
+function onEdit(e) {
+  let activeSheet = e.source.getActiveSheet();
+  let row = e.range.getRow();
+  let col = e.range.getColumn();
+  let activeSheetName = activeSheet.getName()
+
+  if (activeSheetName === "Transactions") {
+    if (row == 1 && col == 6) {
+      e.range.uncheck();
+      zapis();
+      reset();
+    } else if (row >= 3 && col == 7 && row != "") {
+      createSecDataValidation();
+    } else if (row >= 3 && col == 8 && row != "") {
+      createMainDataValidations();
+    } else if (row >= 2 && col == 1) {
+      automaticCategories(row);
+    }
+  } else if (activeSheetName === "P.O.T"){
+    if(row >= 3 && col == 6 ){
+      shoppingList(row,col);
+    } else if(row == 2 && col == 7){
+      clearShoppingList();
+      e.range.uncheck();
+    }
+  }
+}
+
+function shoppingList(row, col){
+
+    let valcell = potSheet.getRange(row, col + 1)
+    .setDataValidation(SpreadsheetApp.newDataValidation()
+    .setAllowInvalid(false)
+    .requireCheckbox()
+    .build());
+
+    return valcell
+}
+
+function clearShoppingList(){
+  let potLastRow = getLastRowSpecial(potSheet,"F:F")
+  potSheet.getRange(3, 6, potLastRow, 2).clearContent();
+  potSheet.getRange(3, 6, potLastRow, 2).clearDataValidations();
+}
+
+function kwota(){
+    lr = getLastRowSpecial(transactionSheet,"A:A") + 1
+    transactionSheet.getRange(lr, 5).setValue('=IF(OR(ISBLANK(C'+lr+');ISBLANK(D'+lr+'));;C' + lr +'*D' + lr + ')')
+}
+
+function createMainDataValidations() {
+
+  let a1Notations = ["I:I", "J:J", "K:K", "L:L"];
+  for (i = 0; i < 4; i++) {
+    let listRanges = helperSheet.getRange(a1Notations[i]);
+    let rule = SpreadsheetApp.newDataValidation()
+      .requireValueInRange(listRanges, true)
+      .setAllowInvalid(true)
+      .build();
+    if (i == 0) {
+      transactionSheet.getRange(transactionSheet_lr + 1, 1).setDataValidation(rule);
+    } else if (i == 1) {
+      transactionSheet.getRange(transactionSheet_lr + 1, 6).setDataValidation(rule);
+    } else if (i == 2) {
+      transactionSheet.getRange(transactionSheet_lr + 1, 7).setDataValidation(rule);
+    } else if (i == 3){
+      transactionSheet.getRange(transactionSheet_lr + 1, 2).setDataValidation(rule);
+    }
+  }kwota()
+  }
+
+
+
+  function createSecDataValidation() {
+
+  let mainCat = transactionSheet.getRange(transactionSheet_lr, 7);
+  let kategorie = kategorieSheet.getRange(1, 1, 1, kategorieSheet_lc).getValues();
+  let kategorieIndex = kategorie[0].indexOf(mainCat.getValue()) + 1;
+  let validationRange = kategorieSheet.getRange(2, kategorieIndex, kategorieSheet_lr)
+  let validationRule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).setAllowInvalid(true).build();
+
+  transactionSheet.getRange(transactionSheet_lr, 8).setDataValidation(validationRule);
+}
+
+function reset() {
+  transactionSheet.getRange(3, 1, transactionSheet_lr + 3, 8).clear();
+  transactionSheet.getRange(4, 1, transactionSheet_lr + 3, 8).clearDataValidations();
+  transactionSheet.getRange(3, 8).clearDataValidations();
+  transactionSheet_lr = 3
+  kwota()
+}
+
+function zapis() {
+  let transakcje = transactionSheet.getRange(3, 1, transactionSheet_lr - 2, 8).getValues();
+
+  historySheet.getRange(historySheet_lr + 1, 3, transactionSheet_lr - 2, 8).setValues(transakcje);
+
+  for (i = historySheet_lr + 1; i < historySheet_lr + 1 + transactionSheet_lr - 2; i++) {
+    historySheet.getRange(i, 2).setValue(transactionSheet.getRange("A1").getValue())
+  }
+  for (i = historySheet_lr + 1; i < historySheet_lr + 1 + transactionSheet_lr - 2; i++) {
+    historySheet.getRange(i, 1).setValue(timeStamp)
+  }
+}
+
+function automaticCategories(row) {
+
+  let produkt = transactionSheet.getRange(row, 1).getValue();
+
+  helperSheet.getRange("A1").setValue(produkt);
+  if (helperSheet.getRange("A2").getValue() == "new item") { return } else {
+    let helperSheet_lr = helperSheet.getRange("B1").getValue();
+    let pot1 = helperSheet.getRange(helperSheet_lr, 2, 1, 3).getValues();
+    transactionSheet.getRange(row, 2, 1, 3).setValues(pot1);
+    let pot2 = helperSheet.getRange(helperSheet_lr, 5, 1, 3).getValues();
+    transactionSheet.getRange(row, 6, 1, 3).setValues(pot2);
+    createMainDataValidations();
+  }
+}
+
+function getLastRowSpecial(sheet, rangeString){
+
+  var rng = sheet.getRange(rangeString).getValues();
+  var lrIndex;
+
+ for (var i = rng.length-1;i>=0;i--){
+   lrIndex = i;
+
+   if(!rng[i].every(function(c){ return c == ""; })){
+     break;
+   }
+ }
+
+  return lrIndex + 1;
+
+}
